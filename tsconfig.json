@@ -1,26 +1,80 @@
 {
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
+    /* Language & Target */
+    "target": "ES2022",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "module": "esnext",
     "moduleResolution": "bundler",
+    "jsx": "preserve",
+    /* Strict Mode — vse vklopljeno */
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    /* Dodatne varnostne nastavitve */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    /* Resolucija modulov */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@/components/*": [
+        "./src/components/*"
+      ],
+      "@/lib/*": [
+        "./src/lib/*"
+      ],
+      "@/store/*": [
+        "./src/store/*"
+      ],
+      "@/types/*": [
+        "./src/types/*"
+      ],
+      "@/prisma/*": [
+        "./prisma/*"
+      ]
+    },
+    /* Interop */
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    /* Output */
     "incremental": true,
     "plugins": [
       {
         "name": "next"
       }
     ],
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "noEmit": true
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out",
+    "dist"
+  ]
 }

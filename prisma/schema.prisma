@@ -1,0 +1,213 @@
+// =============================================================
+//  MAGICFLOW — Prisma Schema
+//  Database: PostgreSQL (Prisma Postgres)
+//  Generated: 2026
+// =============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────
+
+/// Vloge uporabnikov v sistemu
+enum Role {
+  ADMIN     // Polni dostop — upravljanje platforme
+  OPERATOR  // Dostop do dodeljenih projektov
+}
+
+/// Status seje fotografiranja
+enum SessionStatus {
+  ACTIVE    // Seja je v teku
+  COMPLETED // Seja je zaključena
+}
+
+/// Podprti AI video modeli
+enum VideoModel {
+  RUNWAY  // Runway Gen-3
+  KLING   // Kling AI
+  LUMA    // Luma Dream Machine
+  PIKA    // Pika Labs
+}
+
+/// Status generiranja videa
+enum VideoStatus {
+  PENDING    // Čaka v vrsti
+  PROCESSING // V obdelavi pri AI modelu
+  DONE       // Uspešno generirano
+  ERROR      // Napaka pri generiranju
+}
+
+/// Podprti AI modeli za konfiguracijo projekta
+enum AiModel {
+  RUNWAY_GEN3
+  KLING_V1
+  KLING_V2
+  LUMA_DREAM
+  PIKA_V2
+}
+
+// ─── MODELI ───────────────────────────────────────────────────
+
+/// Uporabnik platforme — sinhroniziran s Clerk avtentikacijo
+model User {
+  id        String   @id @default(cuid())
+  /// Clerk zunanji ID (primarni identifikator iz auth sistema)
+  clerkId   String   @unique
+  email     String   @unique
+  name      String
+  role      Role     @default(OPERATOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacije
+  projects  Project[]
+
+  @@index([clerkId])
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+/// Projekt — osnovna enota platforme, pripada naročniku
+model Project {
+  id          String   @id @default(cuid())
+  naziv       String
+  /// URL-prijazen identifikator projekta (npr. "pepsi-promo-2026")
+  slug        String   @unique
+  narocnik    String
+  opis        String?
+  /// Splošne nastavitve projekta (poljubna JSON struktura)
+  nastavitve  Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacije
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  config      ProjectConfig?
+  sessions    Session[]
+
+  @@index([userId])
+  @@index([slug])
+  @@index([narocnik])
+  @@index([createdAt])
+  @@map("projects")
+}
+
+/// Konfiguracija projekta — 1:1 z Project, vsebuje branding in AI nastavitve
+model ProjectConfig {
+  id               String   @id @default(cuid())
+  /// Branding nastavitve (logo, barve, pisave, ozadje...)
+  branding         Json     @default("{}")
+  /// Seznam vklopljenih funkcij (npr. ["printing", "email", "qr"])
+  enabledFeatures  String[] @default([])
+  /// Razpoložljivi čustveni stili videov (npr. ["dramatic", "playful", "elegant"])
+  emotionalStyles  String[] @default([])
+  /// Konfiguracija tiskalnika (model, papir, DPI...)
+  printerConfig    Json     @default("{}")
+  aiModel          AiModel  @default(RUNWAY_GEN3)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relacije — 1:1 z Project
+  projectId        String   @unique
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_configs")
+}
+
+/// Seja — en obisk gosta na fotografski postaji
+model Session {
+  id          String        @id @default(cuid())
+  /// Neobvezno ime gosta (za personalizacijo izkušnje)
+  guestName   String?
+  status      SessionStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relacije
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  photos      Photo[]
+
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("sessions")
+}
+
+/// Fotografija — posneta v okviru seje, shranjena na Cloudinary
+model Photo {
+  id                  String   @id @default(cuid())
+  /// Javni URL fotografije na Cloudinary CDN
+  cloudinaryUrl       String
+  /// Cloudinary Public ID za upravljanje (brisanje, transformacije)
+  cloudinaryPublicId  String   @unique
+  /// Rezultat analize poze (keypoints, zaupanje, orientacija...)
+  poseAnalysis        Json     @default("{}")
+  createdAt           DateTime @default(now())
+
+  // Relacije
+  sessionId           String
+  session             Session         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  generatedVideos     GeneratedVideo[]
+
+  @@index([sessionId])
+  @@index([cloudinaryPublicId])
+  @@index([createdAt])
+  @@map("photos")
+}
+
+/// Generiran video — rezultat AI obdelave fotografije
+model GeneratedVideo {
+  id          String      @id @default(cuid())
+  model       VideoModel
+  /// Prompt poslan AI modelu za generiranje
+  prompt      String      @db.Text
+  status      VideoStatus @default(PENDING)
+  /// Javni URL generiranega videa (null dokler ni DONE)
+  videoUrl    String?
+  /// Čas generiranja v milisekundah (za analytics)
+  latencyMs   Int?
+  /// Strošek generiranja v USD (za sledenje porabe)
+  costUsd     Decimal?    @db.Decimal(10, 6)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relacije
+  photoId     String
+  photo       Photo        @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  rating      VideoRating?
+
+  @@index([photoId])
+  @@index([status])
+  @@index([model])
+  @@index([createdAt])
+  @@map("generated_videos")
+}
+
+/// Ocena videa — subjektivna ocena kakovosti s strani operatorja ali gosta
+model VideoRating {
+  id               String   @id @default(cuid())
+  /// Ujemanje z željenim stilom (1–5)
+  styleMatch       Int
+  /// Splošna kakovost videa (1–5)
+  overallQuality   Int
+  /// Ali je video kontekstualno ustrezen za priložnost
+  isContextual     Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  // Relacije — 1:1 z GeneratedVideo
+  generatedVideoId String         @unique
+  generatedVideo   GeneratedVideo @relation(fields: [generatedVideoId], references: [id], onDelete: Cascade)
+
+  @@index([generatedVideoId])
+  @@index([styleMatch])
+  @@index([overallQuality])
+  @@map("video_ratings")
+}
