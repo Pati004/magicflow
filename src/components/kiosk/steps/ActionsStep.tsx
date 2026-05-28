@@ -100,29 +100,36 @@ export function ActionsStep({
       onPointerDown={resetIdle}
     >
 
-      {/* ── Leva stran: foto + QR ─────────────────────────────── */}
-      <div className="flex flex-col items-center justify-center gap-6 w-1/2 px-8 border-r border-white/10">
+      {/* ── LEVO: fotografija (60%) ───────────────────────────── */}
+      <div className="relative w-[60%] shrink-0 border-r border-white/8">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photoDataUrl}
+          alt="Tvoja fotografija"
+          className="absolute inset-0 w-full h-full object-contain"
+        />
+      </div>
 
-        {/* Thumbnail */}
-        <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ maxHeight: "40vh" }}>
-          <img
-            src={photoDataUrl}
-            alt="Tvoja fotografija"
-            className="w-full h-full object-contain"
-            style={{ maxHeight: "38vh" }}
-          />
-        </div>
+      {/* ── DESNO: QR + gumbi (40%) ──────────────────────────── */}
+      <div className="flex flex-col items-center justify-between flex-1 px-8 py-8">
 
-        {/* QR koda */}
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-white/50 text-xs tracking-widest uppercase">Skeniraj za fotografijo</p>
-          <div className="bg-white rounded-2xl p-3 shadow-lg">
+        {/* QR koda — zgoraj, čim večja */}
+        <div className="flex flex-col items-center gap-3 flex-1 justify-center">
+          <p className="text-white/50 text-[10px] tracking-widest uppercase">Skeniraj za fotografijo</p>
+          <div className="bg-white rounded-3xl p-4 shadow-2xl w-full" style={{ maxWidth: 440 }}>
             {photoCloudUrl ? (
-              <QRCodeSVG value={qrValue} size={120} bgColor="#ffffff" fgColor="#000000" level="M" />
+              <QRCodeSVG
+                value={qrValue}
+                size={508}
+                bgColor="#ffffff"
+                fgColor="#000000"
+                level="M"
+                style={{ width: "100%", height: "auto" }}
+              />
             ) : (
-              <div className="h-[120px] w-[120px] flex items-center justify-center">
+              <div className="h-[208px] w-[208px] flex items-center justify-center">
                 <div
-                  className="h-8 w-8 rounded-full border-2 border-t-transparent animate-spin"
+                  className="h-10 w-10 rounded-full border-2 border-t-transparent animate-spin"
                   style={{ borderColor: primaryColor, borderTopColor: "transparent" }}
                 />
               </div>
@@ -132,68 +139,63 @@ export function ActionsStep({
             <p className="text-white/30 text-xs">Nalagam fotografijo...</p>
           )}
         </div>
-      </div>
 
-      {/* ── Desna stran: akcije ───────────────────────────────── */}
-      <div className="flex flex-col items-center justify-center gap-6 w-1/2 px-8">
-        <h2 className="text-2xl font-bold text-white mb-2">
-          {hasAnyAction ? "Kaj želiš narediti?" : "Tvoja fotografija je pripravljena!"}
-        </h2>
+        {/* Razdelilna linija */}
+        <div className="w-full h-px bg-white/8 my-4" />
 
-        {showPrint && (
-          <button
-            onClick={handlePrint}
-            disabled={printing}
-            className="flex items-center gap-3 rounded-xl text-black font-semibold text-lg active:scale-[0.97] transition-transform disabled:opacity-60"
-            style={{ backgroundColor: primaryColor, padding: "20px 32px", fontSize: 18, minWidth: 240, minHeight: 56 }}
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            {printing ? "Tiskam..." : "Natisni fotografijo"}
-          </button>
-        )}
+        {/* Gumbi — spodaj */}
+        <div className="flex flex-col gap-3 w-full">
+          {showPrint && (
+            <button
+              onClick={handlePrint}
+              disabled={printing}
+              className="flex items-center justify-center gap-3 w-full rounded-2xl text-black font-semibold text-base active:scale-[0.97] transition-transform disabled:opacity-60"
+              style={{ backgroundColor: primaryColor, padding: "18px 20px", minHeight: 64 }}
+            >
+              <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              {printing ? "Tiskam..." : "Natisni fotografijo"}
+            </button>
+          )}
 
-        {showVideo && (
-          <button
-            onClick={() => { resetIdle(); onVideo(); }}
-            className="flex items-center gap-3 rounded-xl font-semibold text-lg active:scale-[0.97] transition-transform"
-            style={{
-              padding: "20px 32px", fontSize: 18, minWidth: 240, minHeight: 56,
-              backgroundColor: showPrint ? "rgba(255,255,255,0.1)" : primaryColor,
-              color: showPrint ? "white" : "black",
-              border: showPrint ? "1px solid rgba(255,255,255,0.2)" : "none",
-            }}
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.845v6.31a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
-            </svg>
-            Ustvari AI video ✨
-          </button>
-        )}
+          {showVideo && (
+            <button
+              onClick={() => { resetIdle(); onVideo(); }}
+              className="flex items-center justify-center gap-3 w-full rounded-2xl font-semibold text-base active:scale-[0.97] transition-transform"
+              style={{
+                padding: "18px 20px", minHeight: 64,
+                backgroundColor: showPrint ? "rgba(255,255,255,0.08)" : primaryColor,
+                color:            showPrint ? "white" : "black",
+                border:           showPrint ? "1px solid rgba(255,255,255,0.15)" : "none",
+              }}
+            >
+              <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.845v6.31a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+              </svg>
+              Ustvari AI video ✨
+            </button>
+          )}
 
-        {!hasAnyAction && (
-          <p className="text-white/40 text-sm text-center max-w-xs">
-            Skeniraj QR kodo za prenos fotografije na svojo napravo.
-          </p>
-        )}
-
-        {/* Začni znova */}
-        <button
-          onClick={() => { resetIdle(); onReset(); }}
-          className="mt-4 text-white/40 text-sm font-medium active:scale-[0.97] transition-transform hover:text-white/70"
-          style={{ minHeight: 48 }}
-        >
-          ↩ Začni znova
-        </button>
-
-        {/* Idle opozorilo */}
-        {idleWarn && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
-            <p className="text-white/40 text-xs text-center">
-              Samodejni reset čez {idleSecs}s
+          {!hasAnyAction && (
+            <p className="text-white/40 text-sm text-center py-4">
+              Skeniraj QR kodo za prenos fotografije.
             </p>
-          </div>
+          )}
+
+          <button
+            onClick={() => { resetIdle(); onReset(); }}
+            className="w-full text-white/30 text-sm font-medium active:scale-[0.97] transition-transform hover:text-white/60 py-3"
+            style={{ minHeight: 48 }}
+          >
+            ↩ Začni znova
+          </button>
+        </div>
+
+        {idleWarn && (
+          <p className="text-white/25 text-xs mt-2">
+            Samodejni reset čez {idleSecs}s
+          </p>
         )}
       </div>
     </div>

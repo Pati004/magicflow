@@ -1,0 +1,1455 @@
+<!doctype html>
+<html lang="sl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Magicflow — Vsaka fotografija postane živ spomin</title>
+<meta name="description" content="Magicflow je dogodkovna platforma, ki s pomočjo I2V modelov pretvori portrete v kratke filmske spomine — vse v manj kot dveh minutah." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+/* Magicflow — Dark Luxury Cinematic */
+:root {
+  --bg: #0a0908;
+  --bg-2: #0e0c0a;
+  --card: #141210;
+  --surface: #1c1916;
+  --line: #2a2620;
+  --line-2: #3a342b;
+  --gold: #c9a961;
+  --gold-bright: #e4c976;
+  --gold-deep: #8a7340;
+  --text: #ece6d6;
+  --text-2: #b8b09e;
+  --muted: #6f6a5c;
+  --muted-2: #4a463d;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  cursor: none;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: none; }
+
+/* Film grain overlay */
+.grain {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0.08;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.9  0 0 0 0 0.8  0 0 0 0 0.6  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Vignette */
+.vignette {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 99;
+  background: radial-gradient(120% 90% at 50% 40%, transparent 40%, rgba(0,0,0,0.55) 100%);
+}
+
+/* Display headings */
+.display {
+  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+}
+.display em {
+  font-style: italic;
+  color: var(--gold-bright);
+  font-weight: 300;
+}
+
+/* Eyebrow */
+.eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* Gold hairline */
+.hairline {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-deep) 20%, var(--gold-deep) 80%, transparent);
+  opacity: 0.5;
+}
+
+/* Section spacing */
+section { padding: 120px 0; position: relative; }
+.container { max-width: 1280px; margin: 0 auto; padding: 0 48px; }
+@media (max-width: 720px) {
+  .container { padding: 0 24px; }
+  section { padding: 80px 0; }
+}
+
+/* Custom cursor */
+.cursor-dot, .cursor-ring {
+  position: fixed;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 1000;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.2s;
+}
+.cursor-dot {
+  width: 4px; height: 4px;
+  background: var(--gold-bright);
+  border-radius: 50%;
+}
+.cursor-ring {
+  width: 28px; height: 28px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  transition: width 0.18s, height 0.18s, border-color 0.18s, transform 0.04s;
+  mix-blend-mode: difference;
+}
+.cursor-ring.hover {
+  width: 56px; height: 56px;
+  border-color: var(--gold-bright);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 28px;
+  border: 1px solid var(--gold);
+  background: transparent;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transition: all 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: var(--gold);
+  transform: translateY(101%);
+  transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+  z-index: 0;
+}
+.btn:hover::before { transform: translateY(0); }
+.btn:hover { color: var(--bg); border-color: var(--gold-bright); }
+.btn > * { position: relative; z-index: 1; }
+.btn--solid { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+.btn--solid::before { background: transparent; }
+.btn--solid:hover { background: var(--gold-bright); color: var(--bg); }
+.btn--ghost { border-color: var(--line-2); }
+.btn--ghost:hover { border-color: var(--gold); }
+.btn--ghost::before { background: var(--surface); }
+.btn--ghost:hover { color: var(--gold-bright); }
+
+/* Nav */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 50;
+  padding: 24px 48px;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: background 0.4s, backdrop-filter 0.4s, border-color 0.4s, padding 0.4s;
+  border-bottom: 1px solid transparent;
+}
+.nav.scrolled {
+  background: rgba(10, 9, 8, 0.7);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-bottom-color: var(--line);
+  padding: 16px 48px;
+}
+@media (max-width: 720px) {
+  .nav { padding: 16px 24px; }
+  .nav.scrolled { padding: 12px 24px; }
+}
+.nav__logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  display: flex; align-items: center; gap: 12px;
+}
+.nav__logo-mark {
+  width: 22px; height: 22px;
+  border: 1px solid var(--gold);
+  display: inline-flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.nav__logo-mark::after {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--gold-bright);
+  border-radius: 50%;
+}
+.nav__links {
+  display: flex; gap: 36px;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.nav__links a { transition: color 0.3s; position: relative; }
+.nav__links a:hover { color: var(--gold-bright); }
+.nav__links a::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: -8px;
+  height: 1px; background: var(--gold);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.nav__links a:hover::after { transform: scaleX(1); }
+@media (max-width: 880px) { .nav__links { display: none; } }
+
+/* Section header */
+.sec-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 48px; margin-bottom: 80px;
+  flex-wrap: wrap;
+}
+.sec-head__num {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  color: var(--muted);
+}
+.sec-head__title {
+  font-size: clamp(40px, 5vw, 72px);
+  max-width: 720px;
+}
+.sec-head__lede {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-2);
+  max-width: 320px;
+}
+
+/* Card */
+.card {
+  background: linear-gradient(180deg, var(--card), var(--bg-2));
+  border: 1px solid var(--line);
+  padding: 32px;
+  position: relative;
+  transition: border-color 0.4s, transform 0.4s;
+}
+.card:hover { border-color: var(--gold-deep); }
+.card__corner {
+  position: absolute; width: 10px; height: 10px;
+  border-color: var(--gold);
+}
+.card__corner.tl { top: -1px; left: -1px; border-top: 1px solid; border-left: 1px solid; }
+.card__corner.tr { top: -1px; right: -1px; border-top: 1px solid; border-right: 1px solid; }
+.card__corner.bl { bottom: -1px; left: -1px; border-bottom: 1px solid; border-left: 1px solid; }
+.card__corner.br { bottom: -1px; right: -1px; border-bottom: 1px solid; border-right: 1px solid; }
+
+/* Reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.reveal.in { opacity: 1; transform: none; }
+.reveal[data-stagger="1"] { transition-delay: 0.08s; }
+.reveal[data-stagger="2"] { transition-delay: 0.16s; }
+.reveal[data-stagger="3"] { transition-delay: 0.24s; }
+.reveal[data-stagger="4"] { transition-delay: 0.32s; }
+.reveal[data-stagger="5"] { transition-delay: 0.40s; }
+
+/* Filmstrip */
+.filmstrip {
+  position: relative;
+  overflow: hidden;
+  margin-top: 64px;
+  padding: 18px 0;
+  background: #050403;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.filmstrip::before, .filmstrip::after {
+  content: '';
+  position: absolute; left: 0; right: 0;
+  height: 18px;
+  background-image:
+    linear-gradient(90deg, transparent 0, transparent 10px, #050403 10px, #050403 22px),
+    linear-gradient(90deg, var(--bg) 0, var(--bg) 22px, transparent 22px);
+  background-size: 32px 100%;
+  background-repeat: repeat-x;
+  z-index: 2;
+}
+.filmstrip::before { top: 0; }
+.filmstrip::after { bottom: 0; }
+.filmstrip__track {
+  display: flex;
+  gap: 14px;
+  animation: filmscroll 60s linear infinite;
+  width: max-content;
+  padding: 18px 0;
+}
+@keyframes filmscroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.filmstrip__frame {
+  width: 220px; height: 140px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #1a1612, #0e0b08);
+  border: 1px solid var(--line);
+  position: relative;
+  overflow: hidden;
+}
+.filmstrip__frame::before {
+  content: attr(data-label);
+  position: absolute;
+  top: 8px; left: 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--gold-deep);
+  z-index: 2;
+}
+.filmstrip__frame::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0 3px, rgba(201,169,97,0.03) 3px 4px),
+    radial-gradient(circle at 50% 60%, rgba(201,169,97,0.22), transparent 60%);
+}
+.filmstrip__frame--gold {
+  background: linear-gradient(135deg, #3a2f1c, #0e0b08);
+}
+
+/* Spec rows */
+.spec {
+  display: grid;
+  grid-template-columns: 200px 1fr auto;
+  gap: 24px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+  align-items: baseline;
+}
+.spec:last-child { border-bottom: none; }
+.spec__k { font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
+.spec__v { font-size: 13px; color: var(--text); }
+.spec__t { font-family: 'Cormorant Garamond', serif; font-size: 22px; color: var(--gold-bright); font-style: italic; }
+
+/* Quality bars */
+.bars { display: inline-flex; gap: 3px; align-items: center; }
+.bars i {
+  display: inline-block;
+  width: 4px; height: 14px;
+  background: var(--line-2);
+}
+.bars i.on { background: var(--gold); }
+.bars i.bright { background: var(--gold-bright); }
+
+/* Steps */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.steps > * { border-right: 1px solid var(--line); }
+.steps > *:last-child { border-right: none; }
+@media (max-width: 980px) {
+  .steps { grid-template-columns: repeat(2, 1fr); }
+  .steps > *:nth-child(2) { border-right: none; }
+  .steps > *:nth-child(1), .steps > *:nth-child(2) { border-bottom: 1px solid var(--line); }
+}
+@media (max-width: 580px) {
+  .steps { grid-template-columns: 1fr; }
+  .steps > * { border-right: none; border-bottom: 1px solid var(--line); }
+  .steps > *:last-child { border-bottom: none; }
+}
+.step {
+  padding: 40px 28px;
+  position: relative;
+  min-height: 320px;
+  display: flex; flex-direction: column;
+}
+.step__num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 88px;
+  font-style: italic;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--gold);
+  opacity: 0.85;
+}
+.step__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  font-weight: 400;
+  margin: 20px 0 12px;
+  letter-spacing: -0.005em;
+}
+.step__body {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-2);
+  margin-top: auto;
+}
+.step__tag {
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 16px;
+}
+
+/* Thesis grid */
+.theses { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+@media (max-width: 780px) { .theses { grid-template-columns: 1fr; } }
+.thesis {
+  padding: 40px;
+  background: linear-gradient(180deg, var(--card), var(--bg-2));
+  border: 1px solid var(--line);
+  position: relative;
+  min-height: 280px;
+  display: flex; flex-direction: column;
+}
+.thesis__id {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+}
+.thesis__statement {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 30px;
+  font-weight: 300;
+  line-height: 1.15;
+  margin: 18px 0 28px;
+  max-width: 95%;
+}
+.thesis__method {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.thesis__method dt {
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.thesis__method dd {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-2);
+  margin: 0;
+}
+
+/* Features grid */
+.features { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+@media (max-width: 780px) { .features { grid-template-columns: 1fr; } }
+.feature {
+  background: var(--bg);
+  padding: 44px;
+  transition: background 0.4s;
+  position: relative;
+}
+.feature:hover { background: var(--card); }
+.feature__icon {
+  width: 48px; height: 48px;
+  border: 1px solid var(--gold-deep);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 28px;
+  position: relative;
+}
+.feature__icon::before {
+  content: '';
+  position: absolute; inset: 4px;
+  border: 1px solid var(--gold);
+  opacity: 0.35;
+}
+.feature__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px;
+  font-weight: 400;
+  margin-bottom: 14px;
+}
+.feature__body {
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--text-2);
+  max-width: 420px;
+}
+.feature__meta {
+  display: flex; gap: 24px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.feature__meta span { color: var(--gold); }
+
+/* Models compare */
+.models { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+@media (max-width: 1000px) { .models { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 580px) { .models { grid-template-columns: 1fr; } }
+.model {
+  padding: 36px 28px;
+  background: linear-gradient(180deg, var(--card), var(--bg-2));
+  border: 1px solid var(--line);
+  position: relative;
+  display: flex; flex-direction: column;
+}
+.model--rec { border-color: var(--gold-deep); background: linear-gradient(180deg, #1a160e, var(--bg-2)); }
+.model__name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 34px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+.model__tag {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.model__tag--rec { color: var(--gold-bright); }
+.model__rows { margin-top: 28px; }
+.model__row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+}
+.model__row:last-child { border-bottom: none; }
+.model__rk { color: var(--muted); letter-spacing: 0.18em; text-transform: uppercase; font-size: 9px; }
+.model__rv { color: var(--text); }
+.model__rv--gold { color: var(--gold-bright); font-family: 'Cormorant Garamond', serif; font-size: 18px; font-style: italic; }
+
+/* CTA */
+.cta {
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(201,169,97,0.12), transparent 60%),
+    var(--bg-2);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+  padding: 160px 0;
+}
+.cta__title { font-size: clamp(48px, 7vw, 96px); max-width: 900px; margin: 0 auto 36px; }
+.cta__lede { color: var(--text-2); max-width: 520px; margin: 0 auto 48px; font-size: 13px; line-height: 1.8; }
+.cta__buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+/* Footer */
+.foot { padding: 60px 0 40px; border-top: 1px solid var(--line); }
+.foot__row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 24px; align-items: center; }
+.foot__c { font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); }
+
+/* Crosshair markers */
+.crosshair {
+  position: absolute;
+  width: 14px; height: 14px;
+  pointer-events: none;
+}
+.crosshair::before, .crosshair::after {
+  content: ''; position: absolute; background: var(--gold-deep);
+}
+.crosshair::before { left: 50%; top: 0; bottom: 0; width: 1px; transform: translateX(-50%); }
+.crosshair::after { top: 50%; left: 0; right: 0; height: 1px; transform: translateY(-50%); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+
+
+<script>"use strict";
+
+function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
+function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t.return && (u = t.return(), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
+var _React = React,
+  useEffect = _React.useEffect,
+  useState = _React.useState,
+  useRef = _React.useRef;
+
+/* ── Custom Cursor ── */
+function CustomCursor() {
+  var dotRef = useRef(null);
+  var ringRef = useRef(null);
+  useEffect(function () {
+    var rx = window.innerWidth / 2,
+      ry = window.innerHeight / 2;
+    var dx = rx,
+      dy = ry;
+    var raf;
+    var move = function move(e) {
+      dx = e.clientX;
+      dy = e.clientY;
+      if (dotRef.current) dotRef.current.style.transform = "translate(".concat(dx, "px, ").concat(dy, "px) translate(-50%, -50%)");
+    };
+    var _tick = function tick() {
+      rx += (dx - rx) * 0.18;
+      ry += (dy - ry) * 0.18;
+      if (ringRef.current) ringRef.current.style.transform = "translate(".concat(rx, "px, ").concat(ry, "px) translate(-50%, -50%)");
+      raf = requestAnimationFrame(_tick);
+    };
+    var over = function over(e) {
+      var _ringRef$current;
+      if (e.target.closest('a, button, .hoverable')) (_ringRef$current = ringRef.current) === null || _ringRef$current === void 0 || _ringRef$current.classList.add('hover');
+    };
+    var out = function out(e) {
+      var _ringRef$current2;
+      if (e.target.closest('a, button, .hoverable')) (_ringRef$current2 = ringRef.current) === null || _ringRef$current2 === void 0 || _ringRef$current2.classList.remove('hover');
+    };
+    window.addEventListener('mousemove', move);
+    document.addEventListener('mouseover', over);
+    document.addEventListener('mouseout', out);
+    _tick();
+    return function () {
+      window.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseover', over);
+      document.removeEventListener('mouseout', out);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "cursor-dot",
+    ref: dotRef
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "cursor-ring",
+    ref: ringRef
+  }));
+}
+
+/* ── Scroll Reveal ── */
+function useReveal() {
+  useEffect(function () {
+    var els = document.querySelectorAll('.reveal');
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      });
+    }, {
+      threshold: 0.12,
+      rootMargin: '0px 0px -10% 0px'
+    });
+    els.forEach(function (el) {
+      return io.observe(el);
+    });
+    return function () {
+      return io.disconnect();
+    };
+  }, []);
+}
+
+/* ── Nav ── */
+function Nav() {
+  var _useState = useState(false),
+    _useState2 = _slicedToArray(_useState, 2),
+    scrolled = _useState2[0],
+    setScrolled = _useState2[1];
+  useEffect(function () {
+    var onScroll = function onScroll() {
+      return setScrolled(window.scrollY > 40);
+    };
+    window.addEventListener('scroll', onScroll, {
+      passive: true
+    });
+    onScroll();
+    return function () {
+      return window.removeEventListener('scroll', onScroll);
+    };
+  }, []);
+  return /*#__PURE__*/React.createElement("nav", {
+    className: "nav ".concat(scrolled ? 'scrolled' : '')
+  }, /*#__PURE__*/React.createElement("a", {
+    href: "#top",
+    className: "nav__logo"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "nav__logo-mark"
+  }), /*#__PURE__*/React.createElement("span", null, "Magicflow")), /*#__PURE__*/React.createElement("div", {
+    className: "nav__links"
+  }, /*#__PURE__*/React.createElement("a", {
+    href: "#flow"
+  }, "Potek"), /*#__PURE__*/React.createElement("a", {
+    href: "#models"
+  }, "Modeli"), /*#__PURE__*/React.createElement("a", {
+    href: "#features"
+  }, "Platforma"), /*#__PURE__*/React.createElement("a", {
+    href: "#thesis"
+  }, "Teze"), /*#__PURE__*/React.createElement("a", {
+    href: "#contact"
+  }, "Kontakt")), /*#__PURE__*/React.createElement("a", {
+    href: "#contact",
+    className: "btn",
+    style: {
+      padding: '12px 22px',
+      fontSize: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Rezerviraj demo")));
+}
+
+/* ── Hero ── */
+function Stat(_ref) {
+  var k = _ref.k,
+    v = _ref.v;
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      letterSpacing: '0.28em',
+      textTransform: 'uppercase',
+      color: 'var(--muted)',
+      marginBottom: 8
+    }
+  }, k), /*#__PURE__*/React.createElement("div", {
+    className: "display",
+    style: {
+      fontSize: 36,
+      color: 'var(--gold-bright)',
+      fontStyle: 'italic'
+    }
+  }, v));
+}
+function Hero() {
+  var frames = [{
+    l: 'F-001 · INPUT',
+    g: false
+  }, {
+    l: 'F-002 · POSE',
+    g: true
+  }, {
+    l: 'F-003 · GEN',
+    g: false
+  }, {
+    l: 'F-004 · LIVE',
+    g: true
+  }, {
+    l: 'F-005 · INPUT',
+    g: false
+  }, {
+    l: 'F-006 · POSE',
+    g: false
+  }, {
+    l: 'F-007 · GEN',
+    g: true
+  }, {
+    l: 'F-008 · LIVE',
+    g: false
+  }];
+  var track = [].concat(frames, frames, frames);
+  return /*#__PURE__*/React.createElement("section", {
+    id: "top",
+    style: {
+      paddingTop: 180,
+      paddingBottom: 60,
+      position: 'relative',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "crosshair",
+    style: {
+      top: 140,
+      left: 48
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "crosshair",
+    style: {
+      top: 140,
+      right: 48
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "container"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "reveal",
+    style: {
+      display: 'flex',
+      gap: 16,
+      alignItems: 'center',
+      marginBottom: 40
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "hairline",
+    style: {
+      width: 64
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "eyebrow"
+  }, "v1.0 \xB7 Image-to-Video Platforma")), /*#__PURE__*/React.createElement("h1", {
+    className: "display reveal",
+    "data-stagger": "1",
+    style: {
+      fontSize: 'clamp(56px, 9vw, 140px)',
+      maxWidth: '14ch'
+    }
+  }, "Vsaka fotografija", /*#__PURE__*/React.createElement("br", null), "postane ", /*#__PURE__*/React.createElement("em", null, "\u017Eiva"), /*#__PURE__*/React.createElement("br", null), "spomin."), /*#__PURE__*/React.createElement("div", {
+    className: "reveal",
+    "data-stagger": "2",
+    style: {
+      display: 'flex',
+      gap: 64,
+      marginTop: 56,
+      flexWrap: 'wrap',
+      alignItems: 'flex-end'
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      maxWidth: 440,
+      fontSize: 14,
+      lineHeight: 1.8,
+      color: 'var(--text-2)',
+      margin: 0
+    }
+  }, "Magicflow je dogodkovna platforma, ki stati\u010Dne portrete pretvori v kratke filmske animacije. Operator zajame, AI o\u017Eivi, gost odnese domov \u2014 vse v manj kot dveh minutah."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 16,
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement("a", {
+    href: "#flow",
+    className: "btn btn--solid"
+  }, /*#__PURE__*/React.createElement("span", null, "Oglej si potek"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10
+    }
+  }, "\u2197")), /*#__PURE__*/React.createElement("a", {
+    href: "#models",
+    className: "btn btn--ghost"
+  }, /*#__PURE__*/React.createElement("span", null, "AI modeli")))), /*#__PURE__*/React.createElement("div", {
+    className: "reveal",
+    "data-stagger": "3",
+    style: {
+      display: 'flex',
+      gap: 48,
+      marginTop: 80,
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement(Stat, {
+    k: "latenca obhoda",
+    v: "\u2264 90s"
+  }), /*#__PURE__*/React.createElement(Stat, {
+    k: "razre\u0161nja",
+    v: "1080p \xB7 24fps"
+  }), /*#__PURE__*/React.createElement(Stat, {
+    k: "modeli I2V",
+    v: "4 ponudniki"
+  }), /*#__PURE__*/React.createElement(Stat, {
+    k: "offline na\u010Din",
+    v: "PWA \xB7 Edge"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "filmstrip reveal",
+    "data-stagger": "4",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "filmstrip__track"
+  }, track.map(function (f, i) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      className: "filmstrip__frame ".concat(f.g ? 'filmstrip__frame--gold' : ''),
+      "data-label": f.l
+    });
+  }))));
+}
+
+/* ── How It Works ── */
+function HowItWorks() {
+  var steps = [{
+    num: 'I',
+    tag: '01 · Zajem',
+    title: 'Fotografija',
+    body: 'Operator z DSLR ali tablico zajame portret. EXIF, osvetlitev in barvni profil se ohranijo skozi celotno verigo.'
+  }, {
+    num: 'II',
+    tag: '02 · Razumevanje',
+    title: 'Analiza poze',
+    body: 'Vision AI v sekundi razbere skeletno strukturo, smer pogleda in mikroizraze. Pripravi prompt za I2V model.'
+  }, {
+    num: 'III',
+    tag: '03 · Oživitev',
+    title: 'Generiranje',
+    body: 'Izbrani I2V model ustvari 5-sekundno animacijo. Rezultat se vodno-žigosa in shrani v dogodkovni arhiv.'
+  }, {
+    num: 'IV',
+    tag: '04 · Predaja',
+    title: 'Prenos & tisk',
+    body: 'Gost s QR kodo prevzame MP4 in animirani GIF. Hkrati natisne premium poliprint s skrito NFC povezavo.'
+  }];
+  return /*#__PURE__*/React.createElement("section", {
+    id: "flow"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "container"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "sec-head reveal"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "sec-head__num"
+  }, "/ 01 \xB7 POTEK"), /*#__PURE__*/React.createElement("h2", {
+    className: "display sec-head__title",
+    style: {
+      marginTop: 24
+    }
+  }, "\u0160tirje koraki od", /*#__PURE__*/React.createElement("br", null), "portreta do ", /*#__PURE__*/React.createElement("em", null, "spomina"), ".")), /*#__PURE__*/React.createElement("p", {
+    className: "sec-head__lede"
+  }, "Vsaka faza je merljiva, opazovana in zamenljiva. Operator vidi \u010Dasovnico v realnem \u010Dasu, gost samo kon\u010Dni rezultat.")), /*#__PURE__*/React.createElement("div", {
+    className: "steps reveal",
+    "data-stagger": "1"
+  }, steps.map(function (s, i) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      className: "step hoverable"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "step__tag"
+    }, s.tag), /*#__PURE__*/React.createElement("div", {
+      className: "step__num"
+    }, s.num), /*#__PURE__*/React.createElement("div", {
+      className: "step__title"
+    }, s.title), /*#__PURE__*/React.createElement("p", {
+      className: "step__body"
+    }, s.body));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "reveal",
+    "data-stagger": "2",
+    style: {
+      marginTop: 48,
+      display: 'flex',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: 24,
+      fontSize: 11,
+      color: 'var(--muted)',
+      letterSpacing: '0.24em',
+      textTransform: 'uppercase'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "\u21B3 Povpre\u010Den \u010Das obhoda: ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--gold-bright)'
+    }
+  }, "78 sekund")), /*#__PURE__*/React.createElement("span", null, "\u21B3 Avtomatska sled: ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--gold-bright)'
+    }
+  }, "vsi koraki zabele\u017Eeni")))));
+}
+
+/* ── Models ── */
+function Bars(_ref2) {
+  var level = _ref2.level,
+    bright = _ref2.bright;
+  return /*#__PURE__*/React.createElement("span", {
+    className: "bars"
+  }, Array.from({
+    length: 5
+  }).map(function (_, i) {
+    return /*#__PURE__*/React.createElement("i", {
+      key: i,
+      className: i < level ? bright ? 'bright' : 'on' : ''
+    });
+  }));
+}
+function Models() {
+  var models = [{
+    name: 'Runway',
+    tag: 'Gen-3 Alpha · API',
+    latency: '~ 42s',
+    cost: '€ 0.21',
+    quality: 4,
+    strength: 'Realizem & koža',
+    bright: false,
+    rec: false
+  }, {
+    name: 'Kling',
+    tag: 'v1.6 · K-API',
+    latency: '~ 58s',
+    cost: '€ 0.14',
+    quality: 5,
+    strength: 'Kompleksne poze',
+    bright: true,
+    rec: true
+  }, {
+    name: 'Luma',
+    tag: 'Dream Machine',
+    latency: '~ 36s',
+    cost: '€ 0.18',
+    quality: 4,
+    strength: 'Kamerni gibi',
+    bright: false,
+    rec: false
+  }, {
+    name: 'Pika',
+    tag: 'v2.2 · turbo',
+    latency: '~ 28s',
+    cost: '€ 0.09',
+    quality: 3,
+    strength: 'Hitrost & cena',
+    bright: false,
+    rec: false
+  }];
+  return /*#__PURE__*/React.createElement("section", {
+    id: "models",
+    style: {
+      background: 'linear-gradient(180deg, var(--bg), var(--bg-2))'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "container"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "sec-head reveal"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "sec-head__num"
+  }, "/ 02 \xB7 MODELI"), /*#__PURE__*/React.createElement("h2", {
+    className: "display sec-head__title",
+    style: {
+      marginTop: 24
+    }
+  }, "\u0160tirje I2V motorji,", /*#__PURE__*/React.createElement("br", null), "en ", /*#__PURE__*/React.createElement("em", null, "orkestrator"), ".")), /*#__PURE__*/React.createElement("p", {
+    className: "sec-head__lede"
+  }, "Magicflow ne stavi na enega ponudnika. Glede na sceno, latenco in prora\u010Dun se delovni proces samodejno preusmeri.")), /*#__PURE__*/React.createElement("div", {
+    className: "models"
+  }, models.map(function (m, i) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      className: "model reveal hoverable ".concat(m.rec ? 'model--rec' : ''),
+      "data-stagger": i + 1
+    }, m.rec && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+      className: "card__corner tl"
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "card__corner tr"
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "card__corner bl"
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "card__corner br"
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "model__name"
+    }, m.name), /*#__PURE__*/React.createElement("div", {
+      className: "model__tag ".concat(m.rec ? 'model__tag--rec' : '')
+    }, m.rec ? '★ priporočen privzeti' : m.tag)), /*#__PURE__*/React.createElement("div", {
+      className: "model__rows"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "model__row"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "model__rk"
+    }, "latenca"), /*#__PURE__*/React.createElement("span", {
+      className: "model__rv model__rv--gold"
+    }, m.latency)), /*#__PURE__*/React.createElement("div", {
+      className: "model__row"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "model__rk"
+    }, "cena / klip"), /*#__PURE__*/React.createElement("span", {
+      className: "model__rv"
+    }, m.cost)), /*#__PURE__*/React.createElement("div", {
+      className: "model__row"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "model__rk"
+    }, "kakovost"), /*#__PURE__*/React.createElement(Bars, {
+      level: m.quality,
+      bright: m.bright
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "model__row",
+      style: {
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "model__rk"
+    }, "prednost"), /*#__PURE__*/React.createElement("span", {
+      className: "model__rv",
+      style: {
+        fontFamily: 'Cormorant Garamond, serif',
+        fontStyle: 'italic',
+        fontSize: 16
+      }
+    }, m.strength))));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "reveal",
+    style: {
+      marginTop: 48,
+      padding: 32,
+      border: '1px solid var(--line)',
+      background: 'var(--card)',
+      display: 'flex',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: 24,
+      alignItems: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "eyebrow",
+    style: {
+      marginBottom: 8
+    }
+  }, "\u232C Orkestracija"), /*#__PURE__*/React.createElement("div", {
+    className: "display",
+    style: {
+      fontSize: 24,
+      color: 'var(--text)'
+    }
+  }, "Avtomatski ", /*#__PURE__*/React.createElement("em", null, "fallback"), " ob napaki, \u010Dasovni prora\u010Dun na klip.")), /*#__PURE__*/React.createElement("a", {
+    href: "#features",
+    className: "btn btn--ghost"
+  }, /*#__PURE__*/React.createElement("span", null, "Tehni\u010Dni specifikat")))));
+}
+
+/* ── Features ── */
+function FIcon(_ref3) {
+  var name = _ref3.name;
+  var c = 'var(--gold)';
+  if (name === 'cfg') return /*#__PURE__*/React.createElement("svg", {
+    width: "22",
+    height: "22",
+    viewBox: "0 0 22 22",
+    fill: "none"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M2 5h10M2 11h18M2 17h6",
+    stroke: c,
+    strokeWidth: "1"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "16",
+    cy: "5",
+    r: "2",
+    stroke: c,
+    strokeWidth: "1"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "12",
+    cy: "17",
+    r: "2",
+    stroke: c,
+    strokeWidth: "1"
+  }));
+  if (name === 'eye') return /*#__PURE__*/React.createElement("svg", {
+    width: "22",
+    height: "22",
+    viewBox: "0 0 22 22",
+    fill: "none"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M2 11s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z",
+    stroke: c,
+    strokeWidth: "1"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "11",
+    cy: "11",
+    r: "2",
+    stroke: c,
+    strokeWidth: "1"
+  }));
+  if (name === 'wifi') return /*#__PURE__*/React.createElement("svg", {
+    width: "22",
+    height: "22",
+    viewBox: "0 0 22 22",
+    fill: "none"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M3 8c4-4 12-4 16 0M6 12c2.5-2.5 7.5-2.5 10 0",
+    stroke: c,
+    strokeWidth: "1"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "11",
+    cy: "16",
+    r: "1.5",
+    fill: c
+  }));
+  if (name === 'panel') return /*#__PURE__*/React.createElement("svg", {
+    width: "22",
+    height: "22",
+    viewBox: "0 0 22 22",
+    fill: "none"
+  }, /*#__PURE__*/React.createElement("rect", {
+    x: "2",
+    y: "3",
+    width: "18",
+    height: "16",
+    stroke: c,
+    strokeWidth: "1"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: "M2 8h18M7 8v11",
+    stroke: c,
+    strokeWidth: "1"
+  }));
+  return null;
+}
+function Features() {
+  var features = [{
+    icon: 'cfg',
+    title: 'Konfiguracijski sistem',
+    body: 'Vsi parametri — modeli, prompti, izpisi, ceniki, blagovne znamke — živijo v deklarativnem YAML. Dogodek pripravljen v 15 minutah, ne v 15 urah.',
+    meta: ['YAML', 'Git-vodeno', 'Hot-reload']
+  }, {
+    icon: 'eye',
+    title: 'Vision AI',
+    body: 'Lasten model za pozo, pogled, mikroizraz in kakovost svetlobe. Filtrira slabe zajeme, preden gredo k draggemu I2V motorju.',
+    meta: ['ONNX', 'Edge inference', '<200ms']
+  }, {
+    icon: 'wifi',
+    title: 'PWA & offline način',
+    body: 'Operatorska aplikacija deluje brez interneta. Generacije se postavijo v vrsto in sinhronizirajo, ko se povezava vrne.',
+    meta: ['Service worker', 'IndexedDB', 'Sync-API']
+  }, {
+    icon: 'panel',
+    title: 'Operator panel',
+    body: 'Pregledna nadzorna plošča za dogodek: živa vrsta, statusi modelov, ročno preglasovanje promptov, finančna sled v realnem času.',
+    meta: ['WS · live', 'RBAC', 'Audit log']
+  }];
+  return /*#__PURE__*/React.createElement("section", {
+    id: "features"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "container"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "sec-head reveal"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "sec-head__num"
+  }, "/ 03 \xB7 PLATFORMA"), /*#__PURE__*/React.createElement("h2", {
+    className: "display sec-head__title",
+    style: {
+      marginTop: 24
+    }
+  }, "Zgrajena za ", /*#__PURE__*/React.createElement("em", null, "zanesljivost"), /*#__PURE__*/React.createElement("br", null), "v dogodkovnem polju.")), /*#__PURE__*/React.createElement("p", {
+    className: "sec-head__lede"
+  }, "Demonstracija na odru je en standard. Sedem dogodkov v tednu, brez tehni\u010Dne ekipe ob terenu, je drug standard.")), /*#__PURE__*/React.createElement("div", {
+    className: "features"
+  }, features.map(function (f, i) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      className: "feature reveal hoverable",
+      "data-stagger": i + 1
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "feature__icon"
+    }, /*#__PURE__*/React.createElement(FIcon, {
+      name: f.icon
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "feature__title"
+    }, f.title), /*#__PURE__*/React.createElement("p", {
+      className: "feature__body"
+    }, f.body), /*#__PURE__*/React.createElement("div", {
+      className: "feature__meta"
+    }, f.meta.map(function (m, j) {
+      return /*#__PURE__*/React.createElement("span", {
+        key: j
+      }, m);
+    })));
+  }))));
+}
+
+/* ── Thesis ── */
+function Thesis() {
+  var items = [{
+    id: 'T1',
+    statement: 'I2V tehnologija je dovolj zrela za uporabo na živih dogodkih.',
+    methodK: 'Metoda dokazovanja',
+    methodV: 'Empirična primerjava 4 ponudnikov na 240 portretih iz pilotnih dogodkov; metrika zadovoljstva, latence in stopnje napak.'
+  }, {
+    id: 'T2',
+    statement: 'Vrednost spomina raste, ko ga lahko gost takoj odnese domov.',
+    methodK: 'Metoda dokazovanja',
+    methodV: 'A/B test takojšnjega prevzema (QR + tisk) proti naknadnemu pošiljanju po e-pošti. Pričakovan dvig NPS ≥ 18 točk.'
+  }, {
+    id: 'T3',
+    statement: 'Operatorska izkušnja je kritična točka ROI, ne sam AI model.',
+    methodK: 'Metoda dokazovanja',
+    methodV: 'Časovna analiza obhoda na 12 dogodkih: < 90s = donosno, > 120s = izguba. Optimizacija PWA-ja in kontrolnika.'
+  }, {
+    id: 'T4',
+    statement: 'Konfiguracijska arhitektura zniža stroške replikacije pod 10%.',
+    methodK: 'Metoda dokazovanja',
+    methodV: 'Primerjava stroškov priprave novega dogodka pred in po deklarativnem sistemu. Cilj: priprava < 4 inženirske ure.'
+  }];
+  return /*#__PURE__*/React.createElement("section", {
+    id: "thesis",
+    style: {
+      background: 'linear-gradient(180deg, var(--bg-2), var(--bg))'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "container"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "sec-head reveal"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "sec-head__num"
+  }, "/ 04 \xB7 TEZE"), /*#__PURE__*/React.createElement("h2", {
+    className: "display sec-head__title",
+    style: {
+      marginTop: 24
+    }
+  }, "\u0160tiri hipoteze,", /*#__PURE__*/React.createElement("br", null), "preverljive z ", /*#__PURE__*/React.createElement("em", null, "metriko"), ".")), /*#__PURE__*/React.createElement("p", {
+    className: "sec-head__lede"
+  }, "Magicflow ni eksperiment. Vsaka teza ima vnaprej dolo\u010Deno metodo, metriko in mejnik uspeha.")), /*#__PURE__*/React.createElement("div", {
+    className: "theses"
+  }, items.map(function (t, i) {
+    return /*#__PURE__*/React.createElement("article", {
+      key: t.id,
+      className: "thesis reveal hoverable",
+      "data-stagger": i + 1
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "card__corner tl"
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "card__corner br"
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'baseline'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "thesis__id"
+    }, t.id), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        letterSpacing: '0.28em',
+        color: 'var(--muted)'
+      }
+    }, "HIPOTEZA")), /*#__PURE__*/React.createElement("h3", {
+      className: "thesis__statement"
+    }, t.statement), /*#__PURE__*/React.createElement("dl", {
+      className: "thesis__method"
+    }, /*#__PURE__*/React.createElement("dt", null, t.methodK), /*#__PURE__*/React.createElement("dd", null, t.methodV)));
+  }))));
+}
+
+/* ── CTA + Footer ── */
+function CTASection() {
+  return /*#__PURE__*/React.createElement("section", {
+    id: "contact",
+    className: "cta"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "container"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "reveal",
+    style: {
+      display: 'flex',
+      justifyContent: 'center',
+      marginBottom: 28
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "eyebrow"
+  }, "/ 05 \xB7 Kontakt")), /*#__PURE__*/React.createElement("h2", {
+    className: "display cta__title reveal",
+    "data-stagger": "1"
+  }, "Pripravimo ", /*#__PURE__*/React.createElement("em", null, "va\u0161"), " dogodek."), /*#__PURE__*/React.createElement("p", {
+    className: "cta__lede reveal",
+    "data-stagger": "2"
+  }, "Predstavitev v \u017Eivo, pilotna konfiguracija in cenovni model. Odgovorimo v 24 urah, ponavadi prej."), /*#__PURE__*/React.createElement("div", {
+    className: "cta__buttons reveal",
+    "data-stagger": "3"
+  }, /*#__PURE__*/React.createElement("a", {
+    href: "mailto:hello@magicflow.studio",
+    className: "btn btn--solid"
+  }, /*#__PURE__*/React.createElement("span", null, "Rezerviraj demo"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10
+    }
+  }, "\u2197")), /*#__PURE__*/React.createElement("a", {
+    href: "#models",
+    className: "btn btn--ghost"
+  }, /*#__PURE__*/React.createElement("span", null, "Tehni\u010Dni one-pager"))), /*#__PURE__*/React.createElement("div", {
+    className: "reveal",
+    "data-stagger": "4",
+    style: {
+      marginTop: 100,
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 64,
+      flexWrap: 'wrap',
+      fontSize: 11,
+      color: 'var(--muted)',
+      letterSpacing: '0.22em',
+      textTransform: 'uppercase'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: 'var(--text-2)',
+      marginBottom: 6
+    }
+  }, "Studio"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: 'var(--gold)'
+    }
+  }, "Ljubljana \xB7 SI")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: 'var(--text-2)',
+      marginBottom: 6
+    }
+  }, "E-po\u0161ta"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: 'var(--gold)'
+    }
+  }, "MAGICFLOW@GMAIL.COM")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: 'var(--text-2)',
+      marginBottom: 6
+    }
+  }, "Telefon"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: 'var(--gold)'
+    }
+  }, "+386 1 234 56 78")))));
+}
+function Footer() {
+  return /*#__PURE__*/React.createElement("footer", {
+    className: "foot"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "container"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "foot__row"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "nav__logo"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "nav__logo-mark"
+  }), /*#__PURE__*/React.createElement("span", null, "Magicflow")), /*#__PURE__*/React.createElement("div", {
+    className: "foot__c"
+  }, "\xA9 2026 Magicflow Studio \xB7 Vsaka pravica pridr\u017Eana"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 24
+    }
+  }, /*#__PURE__*/React.createElement("a", {
+    className: "foot__c",
+    href: "#"
+  }, "Zasebnost"), /*#__PURE__*/React.createElement("a", {
+    className: "foot__c",
+    href: "#"
+  }, "Pogoji"), /*#__PURE__*/React.createElement("a", {
+    className: "foot__c",
+    href: "#"
+  }, "Press")))));
+}
+
+/* ── App ── */
+function App() {
+  useReveal();
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(CustomCursor, null), /*#__PURE__*/React.createElement("div", {
+    className: "grain"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "vignette"
+  }), /*#__PURE__*/React.createElement(Nav, null), /*#__PURE__*/React.createElement("main", null, /*#__PURE__*/React.createElement(Hero, null), /*#__PURE__*/React.createElement(HowItWorks, null), /*#__PURE__*/React.createElement(Models, null), /*#__PURE__*/React.createElement(Features, null), /*#__PURE__*/React.createElement(Thesis, null), /*#__PURE__*/React.createElement(CTASection, null)), /*#__PURE__*/React.createElement(Footer, null));
+}
+var root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(/*#__PURE__*/React.createElement(App, null));
+</script>
+</body>
+</html>

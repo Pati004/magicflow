@@ -19,7 +19,7 @@ import {
   Plus, X, Loader2, Check, ChevronRight, ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isRedirectError } from "next/dist/client/components/redirect";
+import { toast } from "sonner";
 import {
   ProjectFormSchema,
   type ProjectFormData,
@@ -129,13 +129,19 @@ export function ProjectForm({ mode, projectId, defaultValues }: ProjectFormProps
     setLoading(true);
     try {
       const payload = { ...data, ai: { ...data.ai, emotionalStyles } };
-      if (mode === "create") {
-        await createProject(payload);
-      } else if (projectId) {
-        await updateProject(projectId, payload);
+      const result  = mode === "create"
+        ? await createProject(payload)
+        : projectId ? await updateProject(projectId, payload) : null;
+
+      if (result?.success) {
+        toast.success("Projekt shranjen");
+        router.push("/admin/projects");
+      } else {
+        toast.error("Preverite vnosna polja");
+        setLoading(false);
       }
-    } catch (error) {
-      if (isRedirectError(error)) throw error;
+    } catch {
+      toast.error("Preverite vnosna polja");
       setLoading(false);
     }
   };
@@ -522,7 +528,7 @@ export function ProjectForm({ mode, projectId, defaultValues }: ProjectFormProps
         <Button
           type="button"
           variant="ghost"
-          onClick={() => step === 0 ? router.push("/admin") : setStep((s) => s - 1)}
+          onClick={() => step === 0 ? router.push("/admin/projects") : setStep((s) => s - 1)}
           className="text-ink-muted hover:text-ink gap-1.5"
         >
           <ChevronLeft className="h-4 w-4" />

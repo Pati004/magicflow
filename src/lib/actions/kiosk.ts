@@ -56,7 +56,7 @@ export async function createSessionAction(
     const session = await prisma.session.create({
       data: {
         projectId: parsed.data.projectId,
-        guestName: parsed.data.guestName,
+        guestName: parsed.data.guestName ?? null,
         status:    "ACTIVE",
       },
     });
@@ -172,7 +172,7 @@ export async function analyzePhotoAction(
     return {
       success:  true,
       styles:   data.styles,
-      fallback: data.fallback ?? false,
+      fallback: data.analysis.fallback,
     };
 
   } catch (err) {

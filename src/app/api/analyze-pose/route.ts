@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     await prisma.photo.update({
       where: { id: photoId },
       data:  {
-        poseAnalysis: {
+        poseAnalysis: JSON.parse(JSON.stringify({
           poseDescription: analysis.poseDescription,
           mood:            analysis.mood,
           confidence:      analysis.confidence,
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
           analyzedAt:      analysis.analyzedAt,
           model:           analysis.model,
           fallback:        analysis.fallback,
-        },
+        })) as object,
       },
     });
 

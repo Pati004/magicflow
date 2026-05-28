@@ -9,6 +9,41 @@
   }
 }
 
+/* ─── Kiosk touch targets — min 64px ────────────────────────── */
+.kiosk-btn {
+  min-height: 64px;
+  min-width:  64px;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Micro-interactions ─────────────────────────────────────── */
+.btn-press {
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+.btn-press:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+}
+
+/* Admin gumbi hover glow */
+.admin-btn-gold {
+  transition: box-shadow 200ms ease, background-color 200ms ease;
+}
+.admin-btn-gold:hover {
+  box-shadow: 0 0 16px rgba(255,176,32,0.25);
+}
+
+/* Skeleton pulse */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.skeleton {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
 @layer base {
   .theme {
     --font-heading: var(--font-sans);

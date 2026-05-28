@@ -156,6 +156,8 @@ model Photo {
   sessionId           String
   session             Session         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   generatedVideos     GeneratedVideo[]
+  evalResults         EvalResult[]
+  comparisonPairs     ComparisonPair[]
 
   @@index([sessionId])
   @@index([cloudinaryPublicId])
@@ -210,4 +212,261 @@ model VideoRating {
   @@index([styleMatch])
   @@index([overallQuality])
   @@map("video_ratings")
+}
+
+// ─── EVALVACIJSKI MODUL ───────────────────────────────────────
+
+/// Evalvacijska seja — skupina testnih generiranj za primerjavo modelov
+model EvalSession {
+  id          String       @id @default(cuid())
+  /// Ime testnega nabora (npr. "Pilot RV1", "Batch Poroke T1")
+  testSetName String
+  notes       String?      @db.Text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  results     EvalResult[]
+
+  @@index([createdAt])
+  @@map("eval_sessions")
+}
+
+/// Posamezni rezultat generiranja videa v okviru evalvacije
+model EvalResult {
+  id            String      @id @default(cuid())
+  /// Kateri AI model je bil uporabljen (npr. "RUNWAY_GEN3", "KLING_V2")
+  model         String
+  prompt        String      @db.Text
+  /// Ali je video kontekstualno ustrezen za priložnost
+  isContextual  Boolean     @default(true)
+  latencyMs     Int?
+  costUsd       Decimal?    @db.Decimal(10, 6)
+  videoUrl      String?
+  status        VideoStatus @default(PENDING)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  evalSessionId String
+  evalSession   EvalSession @relation(fields: [evalSessionId], references: [id], onDelete: Cascade)
+  photoId       String
+  photo         Photo       @relation(fields: [photoId], references: [id])
+  ratings       EvalRating[]
+
+  @@index([evalSessionId])
+  @@index([model])
+  @@index([photoId])
+  @@index([status])
+  @@map("eval_results")
+}
+
+/// MOS ocena enega ocenjevalca za en video
+model EvalRating {
+  id               String     @id @default(cuid())
+  /// Anonymiziran ID ocenjevalca (iz localStorage)
+  raterAnonymousId String
+  /// MOS kakovost slike/videa (1–5)
+  mosQuality       Int
+  /// MOS ujemanje s stilom (1–5)
+  mosStyleMatch    Int
+  createdAt        DateTime   @default(now())
+
+  evalResultId     String
+  evalResult       EvalResult @relation(fields: [evalResultId], references: [id], onDelete: Cascade)
+
+  @@index([evalResultId])
+  @@index([raterAnonymousId])
+  @@map("eval_ratings")
+}
+
+// ─── PRIMERJAVA KONTEKSTUALNIH VS GENERIČNIH PROMPTOV (T2) ────
+
+/// Seja primerjave — grupira pare za isti model in nabor fotografij
+model PromptComparison {
+  id        String           @id @default(cuid())
+  name      String
+  model     String
+  notes     String?          @db.Text
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  pairs     ComparisonPair[]
+
+  @@index([createdAt])
+  @@map("prompt_comparisons")
+}
+
+/// En par: ista fotografija, kontekstualni prompt vs. generični prompt
+model ComparisonPair {
+  id                  String           @id @default(cuid())
+  /// Indeks stila (0–4) za poravnavo med kontekstualnim in generičnim
+  styleIndex          Int              @default(0)
+  contextualPrompt    String           @db.Text
+  genericPrompt       String           @db.Text
+  genericPromptName   String           // npr. "Cinematic"
+  contextualVideoUrl  String?
+  genericVideoUrl     String?
+  contextualStatus    VideoStatus      @default(PENDING)
+  genericStatus       VideoStatus      @default(PENDING)
+  contextualLatencyMs Int?
+  genericLatencyMs    Int?
+  contextualCostUsd   Decimal?         @db.Decimal(10, 6)
+  genericCostUsd      Decimal?         @db.Decimal(10, 6)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  comparisonId        String
+  comparison          PromptComparison @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
+  photoId             String
+  photo               Photo            @relation(fields: [photoId], references: [id])
+  ratings             ComparisonRating[]
+
+  @@index([comparisonId])
+  @@index([photoId])
+  @@map("comparison_pairs")
+}
+
+/// Ocena enega para — zbira preference in ujemanje za oba videa
+model ComparisonRating {
+  id               String         @id @default(cuid())
+  raterAnonymousId String
+  /// Ujemanje kontekstualnega videa s fotografijo (1–5)
+  contextualFit    Int
+  /// Ujemanje generičnega videa s fotografijo (1–5)
+  genericFit       Int
+  /// Kateri video je ocenjevalec preferiral
+  preference       String         // "contextual" | "generic" | "equal"
+  createdAt        DateTime       @default(now())
+
+  pairId           String
+  pair             ComparisonPair @relation(fields: [pairId], references: [id], onDelete: Cascade)
+
+  @@unique([pairId, raterAnonymousId])
+  @@index([pairId])
+  @@index([raterAnonymousId])
+  @@map("comparison_ratings")
+}
+
+// ─── SUS VPRAŠALNIK (T3) ──────────────────────────────────────
+
+/// Seja za enega udeleženca — vsebuje JWT token za enkratni dostop
+model SUSStudySession {
+  id        String       @id @default(cuid())
+  /// Oznaka serije (npr. "Batch 1 — Operator testi")
+  label     String
+  /// Podpisani JWT token (1-use only)
+  token     String       @unique
+  /// Ali je udeleženec že izpolnil vprašalnik
+  used      Boolean      @default(false)
+  expiresAt DateTime
+  createdAt DateTime     @default(now())
+  response  SUSResponse?
+  observation ObservationSession?
+
+  @@index([token])
+  @@index([used])
+  @@map("sus_study_sessions")
+}
+
+/// Izpolnjen SUS vprašalnik — 10 odgovorov + izračunan score
+model SUSResponse {
+  id             String          @id @default(cuid())
+  /// Starost udeleženca (opcijsko)
+  participantAge Int?
+  /// Tehnična izkušenost: "nizka" | "srednja" | "visoka"
+  techExperience String?
+  /// 10 odgovorov (1–5) v JSON polju
+  answers        Json
+  /// Izračunan SUS score (0–100)
+  score          Float
+  /// Slovenska oznaka: "Nesprejemljivo" | "Marginalno" | ... | "Odlično"
+  grade          String
+  createdAt      DateTime        @default(now())
+
+  studySessionId String          @unique
+  studySession   SUSStudySession @relation(fields: [studySessionId], references: [id], onDelete: Cascade)
+
+  @@index([score])
+  @@index([createdAt])
+  @@map("sus_responses")
+}
+
+// ─── GLASNO RAZMIŠLJANJE / OPAZOVANJE (T3) ───────────────────
+
+/// Opazovalna seja — en udeleženec, en moderator
+model ObservationSession {
+  id              String    @id @default(cuid())
+  /// Anonimna koda udeleženca (P01, P02...)
+  participantCode String
+  /// Neobvezna povezava na SUS sejo za korelacijo
+  susSessionId    String?   @unique
+  susSession      SUSStudySession? @relation(fields: [susSessionId], references: [id])
+  startedAt       DateTime  @default(now())
+  endedAt         DateTime?
+  /// Splošne opombe moderatorja
+  notes           String?   @db.Text
+  events          ObservationEvent[]
+  interview       InterviewResponse?
+
+  @@index([participantCode])
+  @@index([startedAt])
+  @@map("observation_sessions")
+}
+
+/// Posamezna opazka/citat med sejo glasnega razmišljanja
+model ObservationEvent {
+  id                    String             @id @default(cuid())
+  /// Tip opazke
+  type                  String             // "confusion" | "error" | "positive" | "question" | "quote"
+  /// Milisekunde od začetka seje
+  timestampMs           Int
+  /// Verbatim citat ali opis
+  quote                 String?            @db.Text
+  /// Kiosk wizard korak (welcome, camera, actions, style, generating, result)
+  kioskStep             String?
+  /// Tema za tematsko analizo (dodeli post-hoc)
+  theme                 String?
+  /// Podtema
+  subtheme              String?
+  createdAt             DateTime           @default(now())
+
+  observationSessionId  String
+  observationSession    ObservationSession @relation(fields: [observationSessionId], references: [id], onDelete: Cascade)
+
+  @@index([observationSessionId])
+  @@index([type])
+  @@index([theme])
+  @@map("observation_events")
+}
+
+/// Pol-strukturiran intervju po testni seji
+model InterviewResponse {
+  id                   String             @id @default(cuid())
+  // ─── Sklop: Čakanje ────────────────────────────────────
+  waitingFeelings      Int?               // 1–7
+  waitingDuration      Int?               // 1–7 (zaznana dolžina)
+  waitingNotes         String?            @db.Text
+  // ─── Sklop: Video rezultat ──────────────────────────────
+  videoDescription     String?            @db.Text
+  wouldWatchAgain      Int?               // 1–7
+  videoQuality         Int?               // 1–7
+  videoNotes           String?            @db.Text
+  // ─── Sklop: Primerjava stilov ───────────────────────────
+  preferredStyle       String?
+  wantsMoreOptions     Int?               // 1–7
+  styleNotes           String?            @db.Text
+  // ─── Regresija T4 ───────────────────────────────────────
+  /// Skupna ocena izkušnje (1-7) -- odvisna spremenljivka T4
+  overallSatisfaction  Int?
+  /// Ocena intuitivnosti vmesnika (1-7)
+  interfaceRating      Int?
+  /// Izmerjen cas generiranja videa v ms (zapise moderator)
+  totalLatencyMs       Int?
+  // ─── Splošno ────────────────────────────────────────────
+  generalNotes         String?            @db.Text
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  observationSessionId String             @unique
+  observationSession   ObservationSession @relation(fields: [observationSessionId], references: [id], onDelete: Cascade)
+
+  @@map("interview_responses")
 }

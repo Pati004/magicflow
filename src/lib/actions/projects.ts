@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import {
@@ -76,8 +75,8 @@ export async function createProject(data: ProjectFormData) {
     },
   });
 
-  revalidatePath("/admin");
-  redirect("/admin");
+  revalidatePath("/admin/projects");
+  return { success: true as const };
 }
 
 export async function updateProject(id: string, data: ProjectFormData) {
@@ -106,9 +105,9 @@ export async function updateProject(id: string, data: ProjectFormData) {
     },
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin/projects");
   revalidatePath(`/admin/projects/${id}`);
-  redirect("/admin");
+  return { success: true as const };
 }
 
 export async function deleteProject(id: string) {

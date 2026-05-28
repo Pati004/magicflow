@@ -42,10 +42,9 @@ Pravila za prompte:
 export async function analyzePose(imageUrl: string): Promise<PoseAnalysis> {
   const analyzedAt = new Date().toISOString();
 
-  // Preverimo API ključ
   if (!process.env.OPENAI_API_KEY) {
     console.warn("[PoseAnalysis] OPENAI_API_KEY ni nastavljen — vračam fallback");
-    return buildFallbackAnalysis(analyzedAt, "API ključ ni nastavljen");
+    return buildFallbackAnalysis(analyzedAt);
   }
 
   try {
@@ -53,24 +52,12 @@ export async function analyzePose(imageUrl: string): Promise<PoseAnalysis> {
       model:      "gpt-4o",
       max_tokens: 2000,
       messages: [
-        {
-          role:    "system",
-          content: SYSTEM_PROMPT,
-        },
+        { role: "system", content: SYSTEM_PROMPT },
         {
           role:    "user",
           content: [
-            {
-              type:      "image_url",
-              image_url: {
-                url:    imageUrl,
-                detail: "high",
-              },
-            },
-            {
-              type: "text",
-              text: "Analiziraj to fotografijo in predlagaj 5 stilov za animirani video. Odgovori SAMO z JSON.",
-            },
+            { type: "image_url", image_url: { url: imageUrl, detail: "high" } },
+            { type: "text",      text: "Analiziraj to fotografijo in predlagaj 5 stilov za animirani video. Odgovori SAMO z JSON." },
           ],
         },
       ],
@@ -79,16 +66,15 @@ export async function analyzePose(imageUrl: string): Promise<PoseAnalysis> {
     const raw = response.choices[0]?.message?.content;
     if (!raw) throw new Error("Prazen odgovor od OpenAI");
 
-    // Parsiraj JSON odgovor
     const parsed = parseAIResponse(raw);
     if (!parsed) throw new Error("Neveljaven JSON odgovor");
 
-    // Validiraj in očisti stile
-    const styles = validateAndCleanStyles(parsed.styles ?? []);
+    const rawStyles = Array.isArray(parsed.styles) ? parsed.styles as unknown[] : [];
+    const styles    = validateAndCleanStyles(rawStyles);
 
     return {
-      poseDescription: parsed.poseDescription ?? "Fotografija je bila uspešno analizirana.",
-      mood:            parsed.mood ?? "nevtralno",
+      poseDescription: typeof parsed.poseDescription === "string" ? parsed.poseDescription : "Fotografija je bila uspešno analizirana.",
+      mood:            typeof parsed.mood === "string" ? parsed.mood : "nevtralno",
       confidence:      styles.length >= 3 ? 0.9 : 0.5,
       styles,
       analyzedAt,
@@ -99,7 +85,7 @@ export async function analyzePose(imageUrl: string): Promise<PoseAnalysis> {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Neznana napaka";
     console.error("[PoseAnalysis] Napaka:", message);
-    return buildFallbackAnalysis(analyzedAt, message);
+    return buildFallbackAnalysis(analyzedAt);
   }
 }
 
@@ -107,15 +93,9 @@ export async function analyzePose(imageUrl: string): Promise<PoseAnalysis> {
 
 function parseAIResponse(raw: string): Record<string, unknown> | null {
   try {
-    // Počisti markdown code blocks če obstajajo
-    const cleaned = raw
-      .replace(/```json\n?/g, "")
-      .replace(/```\n?/g, "")
-      .trim();
-
+    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     return JSON.parse(cleaned) as Record<string, unknown>;
   } catch {
-    // Poskusi najti JSON znotraj besedila
     const match = raw.match(/\{[\s\S]*\}/);
     if (match) {
       try { return JSON.parse(match[0]) as Record<string, unknown>; }
@@ -176,7 +156,7 @@ function validateAndCleanStyles(rawStyles: unknown[]): VideoStyle[] {
 
 // ─── Fallback analiza ─────────────────────────────────────────
 
-function buildFallbackAnalysis(analyzedAt: string, reason: string): PoseAnalysis {
+function buildFallbackAnalysis(analyzedAt: string): PoseAnalysis {
   return {
     poseDescription: "Fotografija je bila zajeta uspešno.",
     mood:            "veselo, prijetno",

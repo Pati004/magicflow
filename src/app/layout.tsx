@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -45,6 +46,16 @@ export default function RootLayout({
       >
         <body className="min-h-screen bg-background text-ink antialiased">
           {children}
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              style: {
+                background: "#13131E",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "#E8E8F0",
+              },
+            }}
+          />
         </body>
       </html>
     </ClerkProvider>

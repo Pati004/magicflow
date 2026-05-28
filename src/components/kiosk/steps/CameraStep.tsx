@@ -5,29 +5,42 @@ import { getCameraStream, stopCameraStream, capturePhoto } from "@/lib/kiosk/cam
 import type { CapturedPhoto, CameraError } from "@/lib/kiosk/camera";
 
 interface CameraStepProps {
-  primaryColor: string;
-  onCapture:    (photo: CapturedPhoto) => void;
-  onBack:       () => void;
+  primaryColor:   string;
+  existingStream: MediaStream | null;   // Stream iz WelcomeStep
+  onCapture:      (photo: CapturedPhoto) => void;
+  onBack:         () => void;
 }
 
 type CameraState = "loading" | "ready" | "countdown" | "captured" | "error";
 
-export function CameraStep({ primaryColor, onCapture, onBack }: CameraStepProps) {
-  const videoRef   = useRef<HTMLVideoElement>(null);
-  const canvasRef  = useRef<HTMLCanvasElement>(null);
-  const streamRef  = useRef<MediaStream | null>(null);
+export function CameraStep({ primaryColor, existingStream, onCapture, onBack }: CameraStepProps) {
+  const videoRef  = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(existingStream);
 
-  const [state,     setState]     = useState<CameraState>("loading");
+  const [state,     setState]     = useState<CameraState>(existingStream ? "ready" : "loading");
   const [countdown, setCountdown] = useState(3);
   const [error,     setError]     = useState<CameraError | null>(null);
   const [preview,   setPreview]   = useState<string | null>(null);
 
-  // ─── Init kamera ──────────────────────────────────────────────
+  // ─── Poveži obstoječi ali pridobi nov stream ──────────────────
 
   useEffect(() => {
     let cancelled = false;
 
     async function init() {
+      if (existingStream) {
+        // Prevzemi stream iz WelcomeStep — brez novega getUserMedia
+        streamRef.current = existingStream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = existingStream;
+          await videoRef.current.play();
+          setState("ready");
+        }
+        return;
+      }
+
+      // Ni obstoječega streama → pridobi novega
       const result = await getCameraStream("user");
       if (cancelled) return;
 
@@ -46,11 +59,13 @@ export function CameraStep({ primaryColor, onCapture, onBack }: CameraStepProps)
     }
 
     init();
+
     return () => {
       cancelled = true;
-      stopCameraStream(streamRef.current);
+      // Ustavi samo če je to "naš" stream (ne stream iz WelcomeStep)
+      if (!existingStream) stopCameraStream(streamRef.current);
     };
-  }, []);
+  }, [existingStream]);
 
   // ─── Countdown ────────────────────────────────────────────────
 
@@ -62,7 +77,6 @@ export function CameraStep({ primaryColor, onCapture, onBack }: CameraStepProps)
     const interval = setInterval(() => {
       count--;
       setCountdown(count);
-
       if (count <= 0) {
         clearInterval(interval);
         doCapture();
@@ -74,14 +88,14 @@ export function CameraStep({ primaryColor, onCapture, onBack }: CameraStepProps)
 
   const doCapture = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
-
     const photo = capturePhoto(videoRef.current, canvasRef.current);
     setPreview(photo.dataUrl);
     setState("captured");
     stopCameraStream(streamRef.current);
+    streamRef.current = null;
   }, []);
 
-  // ─── Ponovi ───────────────────────────────────────────────────
+  // ─── Ponovi — potrebuje nov stream ────────────────────────────
 
   const retake = useCallback(async () => {
     setPreview(null);
@@ -89,7 +103,10 @@ export function CameraStep({ primaryColor, onCapture, onBack }: CameraStepProps)
     const result = await getCameraStream("user");
     if (result.error) { setError(result.error); setState("error"); return; }
     streamRef.current = result.stream;
-    if (videoRef.current) { videoRef.current.srcObject = result.stream; await videoRef.current.play(); }
+    if (videoRef.current) {
+      videoRef.current.srcObject = result.stream;
+      await videoRef.current.play();
+    }
     setState("ready");
   }, []);
 
@@ -100,26 +117,18 @@ export function CameraStep({ primaryColor, onCapture, onBack }: CameraStepProps)
       {/* Video preview */}
       <video
         ref={videoRef}
-        autoPlay
-        muted
-        playsInline
+        autoPlay muted playsInline
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${state === "captured" ? "opacity-0" : "opacity-100"}`}
         style={{ transform: "scaleX(-1)" }}
       />
 
       {/* Zajeta fotografija */}
       {preview && (
-        <img
-          src={preview}
-          alt="Fotografija"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        <img src={preview} alt="Fotografija" className="absolute inset-0 w-full h-full object-cover" />
       )}
 
-      {/* Skrit canvas za zajem */}
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60" />
 
       {/* Header */}
@@ -156,7 +165,7 @@ export function CameraStep({ primaryColor, onCapture, onBack }: CameraStepProps)
           </div>
           <p className="text-white text-lg font-medium">{error.message}</p>
           <button
-            onClick={() => { setError(null); setState("loading"); retake(); }}
+            onClick={() => { setError(null); retake(); }}
             className="px-8 py-4 rounded-2xl text-black font-semibold text-lg"
             style={{ backgroundColor: primaryColor, minHeight: 56 }}
           >
@@ -170,18 +179,14 @@ export function CameraStep({ primaryColor, onCapture, onBack }: CameraStepProps)
         <div className="relative flex items-center justify-center">
           <div
             className="h-40 w-40 rounded-full flex items-center justify-center text-8xl font-bold text-white"
-            style={{
-              background: `radial-gradient(circle, ${primaryColor}33, transparent)`,
-              border: `4px solid ${primaryColor}`,
-              animation: "pulse 0.8s ease-in-out",
-            }}
+            style={{ background: `radial-gradient(circle, ${primaryColor}33, transparent)`, border: `4px solid ${primaryColor}` }}
           >
             {countdown}
           </div>
         </div>
       )}
 
-      {/* Gumbi — ready */}
+      {/* Ready */}
       {state === "ready" && (
         <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center gap-4 p-8">
           <p className="text-white/60 text-sm mb-2">Pozicioniraj se pred kamero</p>
@@ -198,7 +203,7 @@ export function CameraStep({ primaryColor, onCapture, onBack }: CameraStepProps)
         </div>
       )}
 
-      {/* Gumbi — captured */}
+      {/* Captured */}
       {state === "captured" && (
         <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-4 p-8">
           <button
@@ -209,9 +214,7 @@ export function CameraStep({ primaryColor, onCapture, onBack }: CameraStepProps)
             Ponovi
           </button>
           <button
-            onClick={() => {
-              if (preview) onCapture({ dataUrl: preview, width: 1280, height: 720, timestamp: Date.now() });
-            }}
+            onClick={() => { if (preview) onCapture({ dataUrl: preview, width: 1280, height: 720, timestamp: Date.now() }); }}
             className="flex-1 py-4 rounded-2xl text-black font-semibold text-lg active:scale-95 transition-transform"
             style={{ backgroundColor: primaryColor, minHeight: 56 }}
           >

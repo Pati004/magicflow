@@ -1,22 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
-import { UserNav } from "@/components/shared/UserNav";
-import Link from "next/link";
-import {
-  LayoutDashboard,
-  FolderKanban,
-  Users,
-  BarChart3,
-  Settings,
-  Zap,
-} from "lucide-react";
-
-const navItems = [
-  { href: "/admin",          label: "Pregled",    icon: LayoutDashboard },
-  { href: "/admin/projects", label: "Projekti",   icon: FolderKanban },
-  { href: "/admin/users",    label: "Uporabniki", icon: Users },
-  { href: "/admin/analytics",label: "Analitika",  icon: BarChart3 },
-  { href: "/admin/settings", label: "Nastavitve", icon: Settings },
-];
+import { UserNav }    from "@/components/shared/UserNav";
+import { AdminNav }   from "@/components/admin/AdminNav";
+import { Zap }        from "lucide-react";
 
 export default async function AdminLayout({
   children,
@@ -41,19 +26,8 @@ export default async function AdminLayout({
           </span>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 p-3 space-y-0.5">
-          {navItems.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-ink-muted hover:text-ink hover:bg-background-elevated transition-colors group"
-            >
-              <Icon className="h-4 w-4 group-hover:text-gold transition-colors" />
-              {label}
-            </Link>
-          ))}
-        </nav>
+        {/* Nav — client component z aktivnim stanjem */}
+        <AdminNav />
 
         {/* Footer */}
         <div className="p-3 border-t border-ink-ghost">

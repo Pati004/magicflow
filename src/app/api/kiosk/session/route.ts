@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const session = await prisma.session.create({
       data: {
         projectId: parsed.data.projectId,
-        guestName: parsed.data.guestName,
+        guestName: parsed.data.guestName ?? null,
         status:    "ACTIVE",
       },
     });

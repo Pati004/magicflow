@@ -12,7 +12,7 @@ export default async function NewProjectPage() {
     <div className="p-8 max-w-3xl">
       {/* Breadcrumb */}
       <Link
-        href="/admin"
+        href="/admin/projects"
         className="flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink transition-colors mb-6"
       >
         <ChevronLeft className="h-4 w-4" />
